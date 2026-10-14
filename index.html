@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Rangers Day 2 — AR vs VR vs MR Sorting Game</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root{
+    --forest-deep:#1B4F3F;
+    --forest-mid:#2E7D5B;
+    --leaf:#4E9F63;
+    --sky:#2C93AC;
+    --ember:#E06A1F;
+    --sun:#C98A00;
+    --bark:#3A2B1D;
+    --bark-soft:#6B5642;
+    --parchment:#FFF8E9;
+    --card-bg:#F6F3EA;
+    --font-display:'Baloo 2', system-ui, sans-serif;
+    --font-body:'Nunito', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:var(--font-body);
+    background:
+      radial-gradient(circle at 12% 8%, rgba(44,147,172,0.18), transparent 42%),
+      radial-gradient(circle at 88% 90%, rgba(224,106,31,0.16), transparent 45%),
+      linear-gradient(180deg, #EAF3EE 0%, #DCEAE1 100%);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    color:var(--bark);
+  }
+  .stage{width:100%;max-width:640px;}
+
+  .hud{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:rgba(255,255,255,0.6);
+    border:2px solid rgba(27,79,63,0.15);
+    border-radius:20px;
+    padding:10px 16px;
+    margin-bottom:14px;
+  }
+  .hud-title{
+    font-family:var(--font-display);
+    font-weight:800;
+    color:var(--forest-deep);
+    font-size:1rem;
+  }
+  .hud-title small{
+    display:block;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.65rem;
+    color:var(--bark-soft);
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+  }
+  .hud-stats{display:flex;gap:10px;}
+  .stat{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:0.85rem;
+    background:var(--parchment);
+    border:2px solid rgba(58,43,29,0.12);
+    border-radius:999px;
+    padding:5px 12px;
+    color:var(--forest-deep);
+  }
+
+  .progress-track{
+    height:9px;
+    background:rgba(27,79,63,0.12);
+    border-radius:999px;
+    overflow:hidden;
+    margin-bottom:18px;
+  }
+  .progress-fill{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg, var(--leaf), var(--sky));
+    border-radius:999px;
+    transition:width 0.6s ease;
+  }
+
+  .card{
+    background:var(--parchment);
+    border:3px solid rgba(58,43,29,0.14);
+    border-radius:26px;
+    padding:26px 24px;
+    text-align:center;
+    box-shadow:0 18px 40px -18px rgba(27,79,63,0.35);
+  }
+
+  .badge-icon{width:64px;height:64px;margin:0 auto 10px;display:block;}
+
+  .scenario-tag{
+    display:inline-block;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:0.7rem;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--forest-deep);
+    background:rgba(78,159,99,0.15);
+    border-radius:999px;
+    padding:4px 12px;
+    margin-bottom:10px;
+  }
+
+  .scenario-text{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1.12rem;
+    line-height:1.45;
+    color:var(--bark);
+    margin:6px 0 22px;
+    min-height:76px;
+  }
+
+  .choice-row{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:10px;
+    margin-bottom:6px;
+  }
+  @media (max-width:480px){
+    .choice-row{grid-template-columns:1fr;}
+  }
+  .choice-btn{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:1rem;
+    padding:16px 8px;
+    border-radius:16px;
+    border:3px solid transparent;
+    cursor:pointer;
+    transition:transform 0.15s ease, filter 0.15s ease;
+    color:#fff;
+  }
+  .choice-btn:hover:not(:disabled){transform:translateY(-2px);}
+  .choice-btn:disabled{cursor:default;}
+  .choice-btn.ar{background:var(--leaf);}
+  .choice-btn.vr{background:var(--sky);}
+  .choice-btn.mr{background:var(--ember);}
+  .choice-btn.dim{opacity:0.4;filter:grayscale(30%);}
+  .choice-btn.wrong-pick{outline:4px solid #C0392B; outline-offset:2px;}
+  .choice-btn.right-pick{outline:4px solid var(--forest-deep); outline-offset:2px;}
+  .choice-btn small{display:block;font-family:var(--font-body);font-weight:700;font-size:0.66rem;opacity:0.9;margin-top:2px;}
+
+  .feedback-panel{
+    margin-top:16px;
+    background:#fff;
+    border:2px dashed rgba(27,79,63,0.3);
+    border-radius:14px;
+    padding:12px 14px;
+    font-size:0.9rem;
+    line-height:1.5;
+    text-align:left;
+    display:none;
+  }
+  .feedback-panel.show{display:block;}
+  .feedback-panel strong{color:var(--forest-deep);}
+
+  .next-btn{
+    margin-top:16px;
+    display:none;
+    width:100%;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1rem;
+    padding:13px;
+    border:none;
+    border-radius:14px;
+    background:var(--forest-deep);
+    color:#fff;
+    cursor:pointer;
+  }
+  .next-btn.show{display:block;}
+  .next-btn:hover{background:var(--forest-mid);}
+
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(27,79,63,0.55);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;z-index:10;
+  }
+  .overlay.hidden{display:none;}
+  .overlay-card{
+    background:var(--parchment);
+    border-radius:26px;
+    padding:26px 24px;
+    max-width:440px;
+    width:100%;
+    text-align:center;
+    box-shadow:0 24px 60px -20px rgba(0,0,0,0.4);
+  }
+  .overlay-card h1{
+    font-family:var(--font-display);
+    font-size:1.35rem;
+    color:var(--forest-deep);
+    margin:6px 0 10px;
+  }
+  .overlay-card p{
+    font-size:0.92rem;
+    line-height:1.55;
+    color:var(--bark-soft);
+    margin:0 0 18px;
+  }
+  .legend{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .legend span{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:0.75rem;
+    color:#fff;
+    padding:5px 10px;
+    border-radius:999px;
+  }
+  .legend .ar{background:var(--leaf);}
+  .legend .vr{background:var(--sky);}
+  .legend .mr{background:var(--ember);}
+
+  .primary-btn{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1rem;
+    padding:13px 20px;
+    border:none;
+    border-radius:999px;
+    background:var(--ember);
+    color:#fff;
+    cursor:pointer;
+    box-shadow:0 10px 24px -10px rgba(224,106,31,0.7);
+  }
+  .primary-btn:hover{background:#c65a15;}
+
+  .end-stats{
+    display:flex;justify-content:center;gap:14px;
+    margin-bottom:14px;flex-wrap:wrap;
+  }
+  .end-stat{
+    background:#fff;
+    border-radius:12px;
+    padding:8px 16px;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:0.95rem;
+    color:var(--forest-deep);
+    border:2px solid rgba(27,79,63,0.15);
+  }
+  .rank-name{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:1.05rem;
+    color:var(--ember);
+    margin-bottom:16px;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="hud">
+    <div class="hud-title">AR · VR · MR Sort<small>AI Rangers — Day 2</small></div>
+    <div class="hud-stats">
+      <div class="stat">✅ <span id="scoreValue">0</span></div>
+      <div class="stat">🔥 <span id="streakValue">0</span></div>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="card">
+    <div class="scenario-tag" id="roundTag">Round 1 of 9</div>
+    <p class="scenario-text" id="scenarioText">Loading your first scenario…</p>
+    <div class="choice-row">
+      <button class="choice-btn ar" id="btnAR" data-key="AR">AR<small>Augmented</small></button>
+      <button class="choice-btn vr" id="btnVR" data-key="VR">VR<small>Virtual</small></button>
+      <button class="choice-btn mr" id="btnMR" data-key="MR">MR<small>Mixed</small></button>
+    </div>
+    <div class="feedback-panel" id="feedbackPanel"></div>
+    <button class="next-btn" id="nextBtn">Next Scenario →</button>
+  </div>
+</div>
+
+<div class="overlay" id="introOverlay">
+  <div class="overlay-card">
+    <div class="legend">
+      <span class="ar">AR</span><span class="vr">VR</span><span class="mr">MR</span>
+    </div>
+    <h1>Can you spot the difference?</h1>
+    <p>Read each everyday scenario and tap whether it's <b>Augmented Reality</b> (adds to the real world),
+    <b>Virtual Reality</b> (replaces the real world), or <b>Mixed Reality</b> (blends both, and you can
+    interact with real and virtual things together). 9 rounds — let's go, Ranger!</p>
+    <button class="primary-btn" id="startBtn">Start Sorting 🧭</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="endOverlay">
+  <div class="overlay-card">
+    <svg class="badge-icon" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="28" fill="#C98A00" stroke="#3A2B1D" stroke-width="2"/>
+      <circle cx="32" cy="32" r="19" fill="#E06A1F" stroke="#3A2B1D" stroke-width="1.5"/>
+      <path d="M32 20 L35.5 28.5 L44.5 29.3 L37.7 35.2 L39.7 44 L32 39.2 L24.3 44 L26.3 35.2 L19.5 29.3 L28.5 28.5 Z" fill="#FFF8E9"/>
+    </svg>
+    <h1 id="endTitle">Round Complete!</h1>
+    <div class="end-stats">
+      <div class="end-stat">✅ <span id="finalScore">0</span>/9 Correct</div>
+      <div class="end-stat">🔥 Best streak: <span id="finalStreak">0</span></div>
+    </div>
+    <p class="rank-name" id="rankName">Reality Cadet</p>
+    <p id="endMessage">You're building real AR/VR vocabulary — the whole camp will build on this!</p>
+    <button class="primary-btn" id="restartBtn">Play Again</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rounds = [
+    { text: "You point your phone camera at your room and a virtual sofa appears on the floor, so you can see if it would fit.", key: "AR",
+      why: "This is <b>AR</b> — the phone shows your real room through the camera, with a digital object added on top." },
+    { text: "You put on a headset and your entire view is replaced by a jungle. You can't see your real room at all anymore.", key: "VR",
+      why: "This is <b>VR</b> — the real world is completely replaced by a virtual one." },
+    { text: "A face filter app adds bunny ears and a glowing nose while you can still clearly see your real face and room behind it.", key: "AR",
+      why: "This is <b>AR</b> — digital extras (ears, effects) are layered on top of the real camera image." },
+    { text: "Using a cardboard viewer, you watch a calm 360° video of the moon's surface and feel like you're standing on it.", key: "VR",
+      why: "This is <b>VR</b> — a fully virtual, immersive scene that surrounds your whole view." },
+    { text: "A surgeon wears special glasses that show the real patient in front of them, with a 3D model of the heart floating on top that they can rotate and inspect — while still seeing and moving around the real room.", key: "MR",
+      why: "This is <b>MR</b> — real and virtual objects exist together, and the person can interact with both at once." },
+    { text: "Playing an AR game outdoors, a cartoon character appears standing on the sidewalk right in front of you through your phone screen, while you can still see the actual street.", key: "AR",
+      why: "This is <b>AR</b> — the real street stays visible, with a digital character layered on top." },
+    { text: "You put on goggles for a game where you're riding a roller coaster — your view is 100% the virtual coaster, and the real world around you has completely disappeared.", key: "VR",
+      why: "This is <b>VR</b> — the real environment is fully swapped out for a virtual one." },
+    { text: "Special glasses let you pin a virtual whiteboard onto your real bedroom wall. It stays fixed in place as you walk around, and you can still see and touch your real furniture.", key: "MR",
+      why: "This is <b>MR</b> — the virtual whiteboard anchors into real space and blends with real objects around it." },
+    { text: "You hold a picture card up to your tablet's camera and a 3D dinosaur pops up, standing right on your real desk.", key: "AR",
+      why: "This is <b>AR</b> — a marker card triggers a digital object to appear layered on the real desk." }
+  ];
+
+  var labels = { AR: "Augmented Reality", VR: "Virtual Reality", MR: "Mixed Reality" };
+
+  var order = [];
+  var idx = 0;
+  var score = 0;
+  var streak = 0;
+  var bestStreak = 0;
+  var locked = false;
+
+  var scoreValue = document.getElementById('scoreValue');
+  var streakValue = document.getElementById('streakValue');
+  var progressFill = document.getElementById('progressFill');
+  var roundTag = document.getElementById('roundTag');
+  var scenarioText = document.getElementById('scenarioText');
+  var feedbackPanel = document.getElementById('feedbackPanel');
+  var nextBtn = document.getElementById('nextBtn');
+  var buttons = {
+    AR: document.getElementById('btnAR'),
+    VR: document.getElementById('btnVR'),
+    MR: document.getElementById('btnMR')
+  };
+  var introOverlay = document.getElementById('introOverlay');
+  var endOverlay = document.getElementById('endOverlay');
+
+  function shuffledIndices(n){
+    var arr = [];
+    for(var i=0;i<n;i++) arr.push(i);
+    for(var i=arr.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t = arr[i]; arr[i]=arr[j]; arr[j]=t;
+    }
+    return arr;
+  }
+
+  function renderRound(){
+    locked = false;
+    var r = rounds[order[idx]];
+    roundTag.textContent = 'Round ' + (idx+1) + ' of ' + rounds.length;
+    scenarioText.textContent = r.text;
+    feedbackPanel.className = 'feedback-panel';
+    feedbackPanel.textContent = '';
+    nextBtn.className = 'next-btn';
+    Object.keys(buttons).forEach(function(k){
+      var b = buttons[k];
+      b.disabled = false;
+      b.classList.remove('dim','wrong-pick','right-pick');
+    });
+    progressFill.style.width = Math.round((idx/rounds.length)*100) + '%';
+  }
+
+  function handleChoice(key){
+    if(locked) return;
+    locked = true;
+    var r = rounds[order[idx]];
+    var isCorrect = (key === r.key);
+
+    Object.keys(buttons).forEach(function(k){ buttons[k].disabled = true; });
+
+    if(isCorrect){
+      buttons[key].classList.add('right-pick');
+      score++; streak++;
+      if(streak > bestStreak) bestStreak = streak;
+      feedbackPanel.innerHTML = '<strong>Correct!</strong> ' + r.why;
+    } else {
+      buttons[key].classList.add('wrong-pick');
+      buttons[r.key].classList.add('right-pick');
+      streak = 0;
+      feedbackPanel.innerHTML = '<strong>Not quite \u2014 it\'s ' + labels[r.key] + '.</strong> ' + r.why;
+    }
+    Object.keys(buttons).forEach(function(k){
+      if(k !== key && k !== r.key) buttons[k].classList.add('dim');
+    });
+
+    scoreValue.textContent = score;
+    streakValue.textContent = streak;
+    feedbackPanel.classList.add('show');
+    progressFill.style.width = Math.round(((idx+1)/rounds.length)*100) + '%';
+
+    nextBtn.textContent = (idx+1 >= rounds.length) ? 'See Results →' : 'Next Scenario →';
+    nextBtn.classList.add('show');
+  }
+
+  Object.keys(buttons).forEach(function(k){
+    buttons[k].addEventListener('click', function(){ handleChoice(k); });
+  });
+
+  nextBtn.addEventListener('click', function(){
+    idx++;
+    if(idx >= rounds.length){ showEnd(); } else { renderRound(); }
+  });
+
+  function showEnd(){
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('finalStreak').textContent = bestStreak;
+    var rank = 'Reality Cadet';
+    var msg = "Good first pass \u2014 replay to lock in the difference between AR, VR, and MR.";
+    if(score >= 8){ rank = 'Reality Master'; msg = "Outstanding! You clearly know your AR from your VR from your MR."; }
+    else if(score >= 6){ rank = 'Reality Ranger'; msg = "Great work \u2014 you're building real AR/VR vocabulary for the rest of camp!"; }
+    document.getElementById('rankName').textContent = rank;
+    document.getElementById('endMessage').textContent = msg;
+    endOverlay.classList.remove('hidden');
+  }
+
+  function resetGame(){
+    order = shuffledIndices(rounds.length);
+    idx = 0; score = 0; streak = 0; bestStreak = 0;
+    scoreValue.textContent = 0; streakValue.textContent = 0;
+    endOverlay.classList.add('hidden');
+    renderRound();
+  }
+
+  document.getElementById('startBtn').addEventListener('click', function(){
+    introOverlay.classList.add('hidden');
+    resetGame();
+  });
+  document.getElementById('restartBtn').addEventListener('click', resetGame);
+
+})();
+</script>
+</body>
+</html>
